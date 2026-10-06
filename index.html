@@ -88,7 +88,7 @@ button.small{padding:3px 8px;font-size:11px}
 <label id="god-wrap" class="hidden">Бог <select id="god"></select></label>
 <label>Приоритет <select id="priority">
 <option value="A">A — 15 атр / 14 нав / 40 мон</option>
-<option value="B">B — 14 атр / 12 нав / 70 мон</option>
+<option value="B">B — 14 атр / 12 нав / 70 мон (магия/Ци)</option>
 <option value="C">C — 12 атр / 10 нав / 150 мон</option>
 <option value="D">D — 10 атр / 8 нав / 270 мон</option>
 </select></label>
@@ -199,17 +199,17 @@ function getAttrLabel(a){if(!a)return '—';if(Array.isArray(a))return a.map(x=>
 const MAGIC_LIST=['evocation','necromancy','transmutation','illusion','enchantment','divination','abjuration','conjuration'];
 
 const CLASSES={
-alchemist:{name:'Алхимик',fixed:['blades','blunt','thrown','transmutation','crossbows'],info:'Зелья: ИНТ/2 (в большую) + 1 за элемент набора. Метание через Метательное. Откат зелий — кампания.',hasAlchemy:true},
-bard:{name:'Бард',fixed:['blades','blunt','evocation','enchantment','crossbows'],info:'Выступления баффают союзников. Любой урон/движение/каст прерывает.'},
-barbarian:{name:'Варвар',fixed:['blades','blunt','axes','unarmed','dualwield'],info:'Ярости: Животная, Закаляющая, Кровавая. До отмены, откат — кампания.'},
-fighter:{name:'Воин',fixed:['blades','blunt','axes','polearms','unarmed','dualwield'],info:'Стойки: Защитная, Атакующая, Дуэльная. Одна на бой.'},
+alchemist:{name:'Алхимик',fixed:['blades','blunt','thrown','transmutation','crossbows'],info:'Зелья: ИНТ/2 (в большую) + 1 за элемент набора.',hasAlchemy:true},
+bard:{name:'Бард',fixed:['blades','blunt','evocation','enchantment','crossbows'],info:'Выступления баффают союзников.'},
+barbarian:{name:'Варвар',fixed:['blades','blunt','axes','unarmed','dualwield'],info:'Ярости: Животная, Закаляющая, Кровавая.'},
+fighter:{name:'Воин',fixed:['blades','blunt','axes','polearms','unarmed','dualwield'],info:'Стойки: Защитная, Атакующая, Дуэльная.'},
 wizard:{name:'Волшебник',fixed:['staves','evocation','necromancy','transmutation','illusion','enchantment','divination','abjuration','conjuration'],info:'Заклинания стоят 1 очко вместо 2.'},
 druid:{name:'Друид',fixed:['staves','polearms','evocation','abjuration','conjuration'],info:'Орден: Дикий/Бури/Зверя/Листа.',hasDruidOrder:true},
 cleric:{name:'Жрец',fixed:['evocation','necromancy','transmutation','illusion','enchantment','divination','abjuration','conjuration'],info:'Навыки берутся из домейнов бога. Оружие — только любимое оружие бога.'},
 monk:{name:'Монах',fixed:['staves','unarmed','blades','evocation','abjuration','conjuration','qi'],info:'Ци: Железная кожа, Очищение.'},
 paladin:{name:'Паладин',fixed:['blades','bows','crossbows','conjuration','abjuration'],info:'Кары, Божественная защита, Праведность.'},
 ranger:{name:'Следопыт',fixed:['bows','crossbows','blades','polearms','conjuration','transmutation','thrown'],info:'+2 к атаке/защите против выбранного врага ИЛИ местности.',hasRangerChoice:true,hasBeast:true},
-sorcerer:{name:'Чародей',fixed:['blades','evocation','necromancy','transmutation','illusion','enchantment','abjuration','conjuration'],info:'Источник крови даёт +1 к школе. Заклинания стоят 2 очка.'},
+sorcerer:{name:'Чародей',fixed:['blades','evocation','necromancy','transmutation','illusion','enchantment','abjuration','conjuration'],info:'Источник крови даёт +1 к школе.'},
 rogue:{name:'Плут',fixed:['blades','thrown','illusion','transmutation','bows'],info:'Невидимость (ЛВК+Иллюзия). +3 урона из невидимости.'},
 magus:{name:'Магос',fixed:['blades','blunt','axes','unarmed'],info:'Оружейные не выше магических больше чем на 1. Не может двуручное.',hasMagusSchools:true}
 };
@@ -362,6 +362,12 @@ attrs:{SIL:1,TEL:1,LVK:1,INT:1,MDR:1,HAR:1},skills:{},spells:{},cart:[],gear:'',
 magusSchools:[],domainChoices:{},rangerChoice:'',rangerType:'',beast:'',
 druidOrder:'',wildForm:'',elementalForm:'',potions:{},alchemyFire:0};
 
+// ===== ДОСТУП К МАГИИ/ЦИ =====
+function canUseMagic(){
+  if(state.class==='cleric'||state.class==='paladin') return true;
+  return state.priority==='B';
+}
+
 function initSelects(){
 const rs=document.getElementById('race');for(const k in RACES)rs.innerHTML+=`<option value="${k}">${RACES[k].name}</option>`;
 const cs=document.getElementById('class');for(const k in CLASSES)cs.innerHTML+=`<option value="${k}">${CLASSES[k].name}</option>`;
@@ -378,6 +384,10 @@ if(state.class==='cleric'&&state.god){const god=GODS[state.god];
 god.domains.forEach(d=>{const ds=DOMAIN_SKILLS[d];if(!ds)return;
 if(Array.isArray(ds)){ds.forEach(s=>{if(!list.includes(s))list.push(s);});}
 else{const chosen=state.domainChoices[d]||[];chosen.forEach(s=>{if(!list.includes(s))list.push(s);});}});}
+// фильтр доступа к магии/ци
+if(!canUseMagic()){
+  list=list.filter(k=>SKILLS[k]&&SKILLS[k].cat!=='magic'&&k!=='qi');
+}
 return list;}
 
 function getMagicPool(){return 2+Math.ceil((state.attrs.INT||1)/2);}
@@ -394,6 +404,17 @@ if(state.wildForm&&getSpentOnSpells()+getSpentOnBeast()>getMagicPool())state.wil
 if(state.elementalForm&&getSpentOnSpells()+getSpentOnBeast()>getMagicPool())state.elementalForm='';
 let keys=Object.keys(state.spells).filter(k=>state.spells[k]);
 while(getTotalSpent()>getMagicPool()&&keys.length){delete state.spells[keys.pop()];}}
+
+function validateMagicAccess(){
+  if(!canUseMagic()){
+    state.spells={};
+    state.beast='';
+    state.wildForm='';
+    state.elementalForm='';
+    delete state.skills.qi;
+    state.magusSchools=[];
+  }
+}
 
 function getAlchemySetCount(){let n=0;state.cart.forEach(c=>{if(c.id==='alchemy')n++;});return n;}
 function getAlchemyPool(){return Math.ceil((state.attrs.INT||1)/2)+getAlchemySetCount();}
@@ -420,7 +441,11 @@ god.domains.forEach(d=>{const ds=DOMAIN_SKILLS[d];if(!ds){html+=`<span class="ch
 if(Array.isArray(ds)){html+=`<span class="chip">${d}</span>`;}
 else{const chosen=state.domainChoices[d]||[];html+=`<span class="chip ${chosen.length===ds.count?'active':''}">${d} (${chosen.length}/${ds.count})</span>`;}});
 god.domains.forEach(d=>{const ds=DOMAIN_SKILLS[d];if(!ds||Array.isArray(ds))return;
-const chosen=state.domainChoices[d]||[];const cat=ds.cat==='weapon'?'Оружейные':'Школы магии';
+const chosen=state.domainChoices[d]||[];
+// если маг. домен, а магия недоступна — блокируем
+const isMagicChoice=ds.cat==='magic';
+if(isMagicChoice&&!canUseMagic())return;
+const cat=ds.cat==='weapon'?'Оружейные':'Школы магии';
 html+=`<h4>${d} — выбери ${ds.count} ${cat.toLowerCase()}</h4><div class="radio-group">`;
 const pool=ds.cat==='weapon'?Object.keys(SKILLS).filter(k=>SKILLS[k].cat==='weapon'):MAGIC_LIST;
 pool.forEach(sid=>{const checked=chosen.includes(sid);
@@ -437,11 +462,17 @@ function renderSpecial(){
 const sec=document.getElementById('special-section');const cls=CLASSES[state.class];
 const has=cls.hasMagusSchools||cls.hasRangerChoice||cls.hasDruidOrder;
 if(!has){sec.classList.add('hidden');return;}sec.classList.remove('hidden');let html='';
-if(cls.hasMagusSchools){const chosen=state.magusSchools||[];
-html+=`<h4>Магос — выбери 2 школы магии (${chosen.length}/2)</h4><div class="radio-group">`;
-MAGIC_LIST.forEach(sid=>{const checked=chosen.includes(sid);
-html+=`<label class="radio-item"><input type="checkbox" ${checked?'checked':''} onchange="toggleMagusSchool('${sid}')"> ${SKILLS[sid].name}</label>`;});
-html+=`</div>`;}
+if(cls.hasMagusSchools){
+  if(!canUseMagic()){
+    html+=`<div class="hint" style="color:#e05a5a">Магос требует доступа к магии. Выбери приоритет B.</div>`;
+  } else {
+    const chosen=state.magusSchools||[];
+    html+=`<h4>Магос — выбери 2 школы магии (${chosen.length}/2)</h4><div class="radio-group">`;
+    MAGIC_LIST.forEach(sid=>{const checked=chosen.includes(sid);
+    html+=`<label class="radio-item"><input type="checkbox" ${checked?'checked':''} onchange="toggleMagusSchool('${sid}')"> ${SKILLS[sid].name}</label>`;});
+    html+=`</div>`;
+  }
+}
 if(cls.hasRangerChoice){const rc=state.rangerChoice;
 html+=`<h4>Следопыт — выбери ОДНО: врага ИЛИ местность</h4><div class="radio-group">`;
 ENEMIES.forEach(e=>{html+=`<label class="radio-item"><input type="radio" name="ranger" ${rc===e?'checked':''} onchange="setRanger('${e}','enemy')"> ${e}</label>`;});
@@ -477,7 +508,6 @@ function setElementalForm(k){if(!k){state.elementalForm='';render();return;}cons
 const current=state.elementalForm?ELEMENTAL_FORMS[state.elementalForm].cost:0;const diff=e.cost-current;
 if(diff>0&&!canAfford(diff)){alert('Не хватает очков.');return;}state.elementalForm=k;render();}
 
-// ==== БАЛАНС МАГОСА ====
 function getMagusWeaponMax(){
 let max=0;
 for(const id in state.skills){
@@ -503,15 +533,17 @@ return Math.abs(getMagusWeaponMax()-getMagusMagicMax())<=1;
 
 function renderSkills(){
 const avail=getAvailableSkills();const list=document.getElementById('skill-list');list.innerHTML='';
-// Баннер магоса
 if(state.class==='magus'){
   const w=getMagusWeaponMax();const m=getMagusMagicMax();
   const ok=Math.abs(w-m)<=1;
   const color=ok?'#5ae05a':'#e05a5a';
   list.innerHTML+=`<div class="hint" style="color:${color};font-size:12px;margin-bottom:8px">Баланс магоса: лучший оружейный = ${w}, лучший магический = ${m}. Разница должна быть ≤ 1.</div>`;
 }
+if(!canUseMagic()&&state.class!=='cleric'&&state.class!=='paladin'){
+  list.innerHTML+=`<div class="hint" style="color:#e05a5a;font-size:12px;margin-bottom:8px">Магия и Ци доступны только приоритету B.</div>`;
+}
 if(!avail.length){if(state.class==='cleric'&&!state.god)list.innerHTML+='<p class="hint">Выбери бога.</p>';
-else if(state.class==='magus'&&(!state.magusSchools||state.magusSchools.length<2))list.innerHTML+='<p class="hint">Выбери 2 школы магии выше.</p>';
+else if(state.class==='magus'&&canUseMagic()&&(!state.magusSchools||state.magusSchools.length<2))list.innerHTML+='<p class="hint">Выбери 2 школы магии выше.</p>';
 else list.innerHTML+='<p class="hint">Нет доступных навыков.</p>';return;}
 const groups={weapon:'Оружейные',magic:'Магические',util:'Вспомогательные',special:'Особые'};const byCat={};
 avail.forEach(id=>{if(!SKILLS[id])return;const cat=SKILLS[id].cat;(byCat[cat]=byCat[cat]||[]).push(id);});
@@ -559,6 +591,12 @@ function renderSpells(){
 const avail=getAvailableSkills();const magicAvail=avail.filter(s=>SKILLS[s]&&SKILLS[s].cat==='magic');
 const counter=document.getElementById('spell-counter');const banner=document.getElementById('pool-banner');
 const list=document.getElementById('spell-list');
+if(!canUseMagic()&&state.class!=='cleric'&&state.class!=='paladin'){
+  counter.textContent='';
+  banner.innerHTML=`<span style="color:#e05a5a">Магия доступна только приоритету B (кроме жреца и паладина).</span>`;
+  list.innerHTML='';
+  return;
+}
 if(!magicAvail.length){counter.textContent='';banner.textContent='Класс не имеет доступа к магии.';list.innerHTML='';return;}
 const pool=getMagicPool();const spellCost=getSpellCost();const spentSpells=getSpentOnSpells();
 const spentBeast=getSpentOnBeast();const total=spentSpells+spentBeast;
@@ -694,7 +732,7 @@ if(!state.subrace||!r.subraces[state.subrace])state.subrace=Object.keys(r.subrac
 sel.value=state.subrace;}else{wrap.classList.add('hidden');state.subrace='';}
 const maxes=getMaxes();
 for(const k in state.attrs){if(state.attrs[k]>(maxes[k]||6))state.attrs[k]=maxes[k]||6;}
-validateMagicSelection();if(!silent)render();}
+validateMagicSelection();validateMagicAccess();if(!silent)render();}
 
 function onClassChange(silent){state.class=document.getElementById('class').value;
 const wrap=document.getElementById('god-wrap');wrap.classList.toggle('hidden',state.class!=='cleric');
@@ -705,7 +743,7 @@ if(state.class!=='druid'){state.druidOrder='';state.wildForm='';state.elementalF
 const canHaveBeast=state.class==='ranger'||(state.class==='druid'&&state.druidOrder==='beast');
 if(!canHaveBeast)state.beast='';
 if(!CLASSES[state.class].hasAlchemy){state.potions={};state.alchemyFire=0;}
-validateMagicSelection();if(!silent)render();}
+validateMagicSelection();validateMagicAccess();if(!silent)render();}
 
 function save(){collect();localStorage.setItem('pf_char',JSON.stringify(state));alert('Сохранено.');}
 function load(){const raw=localStorage.getItem('pf_char');if(!raw){alert('Нет сохранений.');return;}state=JSON.parse(raw);applyState();render();}
@@ -718,7 +756,7 @@ document.getElementById('race').addEventListener('change',()=>onRaceChange());
 document.getElementById('subrace').addEventListener('change',e=>{state.subrace=e.target.value;onRaceChange();});
 document.getElementById('class').addEventListener('change',()=>onClassChange());
 document.getElementById('god').addEventListener('change',e=>{state.god=e.target.value;state.domainChoices={};render();});
-document.getElementById('priority').addEventListener('change',()=>{collect();render();});
+document.getElementById('priority').addEventListener('change',()=>{collect();validateMagicSelection();validateMagicAccess();render();});
 document.getElementById('gender').addEventListener('change',()=>{collect();});
 applyState();
 render();
